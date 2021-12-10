@@ -4,7 +4,7 @@ from openpyxl.utils import get_column_letter
 from conn import get_conn
 
 def process_data(records):
-    logging.debug("%s: Beginning database processing..." % datetime.datetime.now())
+    logging.debug("%s: Beginning record processing..." % datetime.datetime.now())
     if len(records['bank']) != 0: add_data(records['bank'], 'bank')
     if len(records['branch']) != 0: add_data(records['branch'], 'branch')
     if len(records['applicant']) != 0: add_data(records['applicant'], 'applicant')

@@ -1,0 +1,10 @@
+version: '3'
+services:
+        aline-db:
+                image: joshuad23/aline-db:1.0
+                ports:
+                        - 3309:3306
+        py-db-injector:
+                image: joshuad23/aline-py-injector:1.0
+                depends_on:
+                  - aline-db
