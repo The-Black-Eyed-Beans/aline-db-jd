@@ -40,7 +40,6 @@ def process_table(ws):
         for col in range(1, col_len):
             char = get_column_letter(col)
             record.append(ws[char + str(row)].value)
-        if len(record) != 0: records.append(tuple(record))
-    if len(record) == 0: return []
+            records.append(tuple(record))
     logging.debug("%s: Total records parsed: %d" % (datetime.datetime.now(),len(records)))
     return records
