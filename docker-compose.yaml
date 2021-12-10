@@ -5,6 +5,12 @@ services:
                 ports:
                         - 3309:3306
         py-db-injector:
-                image: joshuad23/aline-py-injector:1.0
+                image: joshuad23/aline-py-injector:2.0
+                environment:
+                        - MYSQL_HOST=aline-db
+                        - MYSQL_PORT=3306
+                        - MYSQL_USER=root
+                        - MYSQL_PASSWORD=123456
+                        - MYSQL_DATABASE=alinedb
                 depends_on:
-                  - aline-db
+                        - aline-db

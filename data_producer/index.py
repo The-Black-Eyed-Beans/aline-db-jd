@@ -9,6 +9,16 @@ logging.basicConfig(filename='data_dump.log', level=logging.DEBUG)
 logging.debug('%s: Starting flat file import.' % datetime.now())
 logging.debug('%s: Building environment...' % datetime.now())
 
+
+"""
+SETTING DEBUG ENV
+"""
+# environ['MYSQL_HOST'] = 'localhost'
+# environ['MYSQL_PORT'] = '3309'
+# environ['MYSQL_USER'] = 'root'
+# environ['MYSQL_PASSWORD'] = '123456'
+# environ['MYSQL_DATABASE'] = 'alinedb'
+
 read_files = []
 mypath = "."
 fileList = [f for f in listdir(mypath) if isfile(join(mypath, f)) and (f.endswith(".xls") or f.endswith(".xlsx"))]
@@ -39,5 +49,5 @@ for file_ in fileList:
         record_list[sheet] = records
     read_files.append(file_)
     process_data(record_list)
-    logging.debug("%s: File processing complete!")
+    logging.debug("%s: File processing complete!" % datetime.now())
 print("log @ data_dump.log")
