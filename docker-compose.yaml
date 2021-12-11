@@ -5,7 +5,7 @@ services:
                 ports:
                         - 3309:3306
         py-db-injector:
-                image: joshuad23/aline-py-injector:2.0
+                image: joshuad23/aline-py-injector:2.5
                 environment:
                         - MYSQL_HOST=aline-db
                         - MYSQL_PORT=3306

@@ -1,14 +1,14 @@
 import socket
 import time
-import logging
-import datetime
+from logger import Logger
+
+logger = Logger()
 
 def ping(host,port):
     """
     Returns True if host (str) responds to a ping request.
     """
-    logging.debug("%s: Pinging database @ %s" % (datetime.datetime.now(),host))
-    
+    logger.add("DEBUG","Pinging database @ %s",host)
 
     # Create network socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,10 +17,10 @@ def ping(host,port):
     result = sock.connect_ex((host,int(port)))
 
     if result == 0:
-        logging.debug("%s: Ping pong. Success." % datetime.datetime.now())
+        logger.add("DEBUG","Ping pong. Success.")
         return True
     else:
-        logging.error("%s: Ping poop. No response." % datetime.datetime.now())
+        logger.add("ERROR","Ping poop. No response.")
         return False
 
 def pinger(host,port):
@@ -29,13 +29,13 @@ def pinger(host,port):
     Adjust snooze appropriately. Probably better as env. var.
     """
     snooze = 15
-    logging.debug("%s: Starting ping cycle..." % datetime.datetime.now())
+    logger.add("DEBUG","Starting ping cycle...")
     for i in range(1,6):
-        if ping(host,port) == True: 
-            logging.debug("%s: Exiting ping cycle..." % datetime.datetime.now())
+        if ping(host,port) == True:
+            logger.add("DEBUG","Exiting ping cycle...")
             return True
-        logging.debug("%s: Reattempting in %i seconds..." % (datetime.datetime.now(),snooze))
+        logger.add("DEBUG","Reattempting in %d seconds..",snooze)
         time.sleep(snooze)
-    logging.error("%s: Pings exhausted. No response." % datetime.datetime.now())
+    logger.add("ERROR","Pings exhausted. No response.")
     return False
 

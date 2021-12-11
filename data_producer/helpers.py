@@ -1,10 +1,11 @@
-import datetime
-import logging
+from logger import Logger
 from openpyxl.utils import get_column_letter
 from conn import get_conn
 
+logger = Logger()
+
 def process_data(records):
-    logging.debug("%s: Beginning record processing..." % datetime.datetime.now())
+    logger.add("DEBUG","Beginning record processing...")
     if len(records['bank']) != 0: add_data(records['bank'], 'bank')
     if len(records['branch']) != 0: add_data(records['branch'], 'branch')
     if len(records['applicant']) != 0: add_data(records['applicant'], 'applicant')
@@ -16,30 +17,30 @@ def process_data(records):
     if len(records['transaction']) != 0: add_data(records['transaction'], 'transaction')
 
 def add_data(records,tbl):
-    logging.debug("%s: Table - %s" % (datetime.datetime.now(),tbl))
+    logger.add("DEBUG","Table - %s",tbl)
     conn = get_conn()
     curs = conn.cursor()
     vals = ["%s"] * len(records[0])
     sql = "INSERT INTO %s VALUES (%s)" % (tbl, ",".join(vals))
-    logging.debug("%s: Executing statement: %s" % (datetime.datetime.now(),sql))
+    logger.add("DEBUG","Executing statement: %s",sql)
     try:
         curs.executemany(sql,records)
         conn.commit()
-        logging.debug("%s: Execution complete. Records commited: %s" % (datetime.datetime.now(),curs.rowcount))
+        logger.add("DEBUG","Execution complete. Records commited: %s",curs.rowcount)
     except:
-        logging.error("%s: Execution failed. Skipping table!" % datetime.datetime.now())
+        logger.add("ERROR","Execution failed. Skipping table!")
 
 def process_table(ws):
-    logging.debug("%s: Records found. Processing..." % datetime.datetime.now())
+    logger.add("DEBUG"," Records found. Processing...")
     col_len = len(tuple(ws.columns)) +1
     row_len = len(tuple(ws.rows)) +1
     records = []
-    logging.debug("%s: Total records found: %d" % (datetime.datetime.now(),row_len-2))
+    logger.add("DEBUG"," Total records found: %d",row_len-2)
     for row in range(2, row_len):
         record = []
         for col in range(1, col_len):
             char = get_column_letter(col)
             record.append(ws[char + str(row)].value)
         if len(record) != 0: records.append(tuple(record))
-    logging.debug("%s: Total records parsed: %d" % (datetime.datetime.now(),len(records)))
+    logger.add("DEBUG"," Total records parsed: %d",len(records))
     return records

@@ -1,23 +1,13 @@
 from os import listdir
 from os.path import isfile, join
-from datetime import datetime
-import logging
+from logger import Logger
 from openpyxl import load_workbook
 from helpers import process_data, process_table
 
-logging.basicConfig(filename='data_dump.log', level=logging.DEBUG)
-logging.debug('%s: Starting flat file import.' % datetime.now())
-logging.debug('%s: Building environment...' % datetime.now())
+logger = Logger("data_dump.log")
+logger.start_logger()
 
-
-"""
-SETTING DEBUG ENV
-"""
-# environ['MYSQL_HOST'] = 'localhost'
-# environ['MYSQL_PORT'] = '3309'
-# environ['MYSQL_USER'] = 'root'
-# environ['MYSQL_PASSWORD'] = '123456'
-# environ['MYSQL_DATABASE'] = 'alinedb'
+logger.add("DEBUG","Strating Aline database injection script...")
 
 read_files = []
 mypath = "."
@@ -26,28 +16,29 @@ fileList = [f for f in listdir(mypath) if isfile(join(mypath, f)) and (f.endswit
 for file_ in fileList:
     record_list = {}
     if file_ in read_files:
-        logging.error("%s: File: %s has already been processed. Skipping file." % (datetime.now(),file_))
+        logger.add("ERROR","File: %s has already been processed. Skipping file.",file_)
         continue
-    logging.debug('%s: Loading file: %s' % (datetime.now(),file_))
+    logger.add("DEBUG","Reading file: %s",file_)
     try:
+        read_files.append(file_)
         wb = load_workbook(file_)
-        logging.debug("%s: File successfully loaded." % datetime.now())
-        logging.debug("%s: Sheets found!" % datetime.now())
-        logging.debug("%s: %s" % (datetime.now(),wb.sheetnames))
+        logger.add("DEBUG","File successfully read.")
+        if len(wb.sheetnames) != 0:
+            logger.add("DEBUG","Sheets found!")
+            logger.add("DEBUG","%s",wb.sheetnames)
     except:
-        logging.error("%s: Error ocurred in loading file. Aborting file." % datetime.now())
+        logger.add("ERROR","Error ocurred in loading file. Aborting file.")
         continue
     for sheet in wb.sheetnames:
-        logging.debug("%s: Checking workbook for %s." % (datetime.now(),sheet))
+        logger.add("DEBUG","Checking workbook for %s.",sheet)
         ws = wb[sheet]
         ws_len = len(ws['A'])
         if ws_len <= 1:
-            logging.debug("%s: 0 records found. Skipping table." % datetime.now())
+            logger.add("DEBUG","0 records found. Skipping table.")
             record_list[sheet] = []
             continue
         records = process_table(ws)
-        record_list[sheet] = records
-    read_files.append(file_)
+        record_list[sheet] = records 
     process_data(record_list)
-    logging.debug("%s: File processing complete!" % datetime.now())
+    logger.add("DEBUG","Data processing complete!")
 print("log @ data_dump.log")
