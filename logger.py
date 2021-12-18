@@ -38,13 +38,3 @@ class Logger:
         message =  "%s: %s" % (datetime.now(), message)
         logging.disable(message)
         if (self.std_out): print(message)
-
-    def add(self,flag,message,*args):
-        if len(args) != 0: message = message % args
-        cc_message =  "%s: %s" % (datetime.now(), message)
-        if flag == 'DEBUG': logging.debug(cc_message)
-        if flag == 'INFO': logging.info(cc_message)
-        if flag == 'ERROR': logging.error(cc_message)
-        if flag == 'WARNING': logging.warning(cc_message)
-        if flag == 'DISABLE': logging.disable(cc_message)
-        print(cc_message)
