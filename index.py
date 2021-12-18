@@ -9,7 +9,6 @@ logger.info("Starting python script...")
 
 util.verify_account_sequence()
 util.add_null_merchant()
-conn_attempts = 10
 
 qty = 100
 banks = util.create_banks(qty)
