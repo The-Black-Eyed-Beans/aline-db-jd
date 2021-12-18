@@ -4,13 +4,24 @@ services:
                 image: joshuad23/aline-db:1.0
                 ports:
                         - 3309:3306
-        py-db-injector:
-                image: joshuad23/aline-py-injector:2.5
+        db-injector:
+                image: joshuad23/aline-db-injector:1.0
                 environment:
-                        - MYSQL_HOST=aline-db
+                        - MYSQL_HOST=host.docker.internal
                         - MYSQL_PORT=3306
-                        - MYSQL_USER=root
+                        - MYSQL_USER="root"
                         - MYSQL_PASSWORD=123456
-                        - MYSQL_DATABASE=alinedb
+                        - MYSQL_DATABASE="alinedb"
+                        - USER_ROLE="admin"
+                        - USER_USERNAME="blackEyeBeans"
+                        - USER_PASSWORD="Abc123456*"
+                        - USER_FIRSTNAME="Izuku"
+                        - USER_LASTNAME="Midoriya"
+                        - USER_EMAIL="deku@gmail.com"
+                        - USER_PHONE="864-324-4568"
+                        - URL_UNDERWRITER="localhost:8071"
+                        - URL_USER="localhost:8070"
+                        - URL_BANK="localhost:8083"
+                        - URL_TRANSACTIONS="localhost:8073"
                 depends_on:
                         - aline-db
