@@ -1,11 +1,14 @@
 from os import environ
-import requests
+import re
+from requests import post
 from random import randint
 from faker import Faker
 from faker.providers import internet,date_time,misc
 from conn import get_conn
 from logger import Logger
+from request import Request
 
+req = Request()
 logger = Logger(std_out=True)
 fake = Faker()
 fake.add_provider(internet)
@@ -18,6 +21,7 @@ credentials = {
 }
 
 conn_attempts = 10
+ACCOUNT_TYPES = {0:'SAVINGS',1:'CHECKING',2:'CHECKING_AND_SAVINGS'}
 
 def create_admin():
     admin = {
@@ -36,7 +40,7 @@ def add_admin(payload):
     # Returns {username, password}
     logger.info("Attempting to Register user.")
     url = "http://%s/users/registration" % environ.get('URL_USER')
-    r = requests.post(url,json=payload)
+    r = post(url,json=payload)
     if (r.status_code >= 200 and r.status_code <= 300):
         username = payload['username']
         password = payload['password']
@@ -49,7 +53,7 @@ def get_token(payload):
     # Returns jwt -> Bearer xyz
     logger.info("Attempting to retieve token.")
     url = "http://%s/login" % environ.get('URL_USER')
-    r = requests.post(url,json=payload)
+    r = post(url,json=payload)
     if (r.status_code >= 200 and r.status_code <= 300):
         token = r.headers['Authorization']
         logger.info("Token: %s", token.split(' ')[1])
@@ -75,7 +79,7 @@ def get_random_phone_num():
 
 def get_random_address():
     addr = fake.address().split('\n')
-    if len(addr) > 2: get_random_address()
+    if (len(addr) > 2): get_random_address()
     addr = [addr[0]] + addr[1].split(', ')
     return addr[:2] + addr[-1].split(' ')
 
@@ -115,14 +119,26 @@ def create_branch(banks):
     return branches
 
 def add_null_merchant():
+    logger.info("Querying database for null merchant...")
+    conn = get_conn()
+    curs = conn.cursor()
+    curs.execute(('SELECT * FROM %s WHERE code="NONE"' % "merchant"))
+    r = curs.fetchall()
+    if (len(r) == 0): 
+        logger.debug("No record found!")
+        set_null_merchant()
+        return
+    logger.info("Record found. Continuing to next process...")
+
+def set_null_merchant():
     logger.info("Attempting to insert NULL merchant...")
     conn = get_conn()
     curs = conn.cursor()
-    sql = 'INSERT INTO alinedb.merchant VALUES("NONE",null,null,null,"NONE",null,null,null)'
+    sql = 'INSERT INTO merchant VALUES("NONE",null,null,null,"NONE",null,null,null)'
     try:
         curs.execute(sql)
         conn.commit()
-        logger.info("Execution complete. Records commited: %s",curs.rowcount)
+        logger.info("Execution complete. Records commited: 1")
     except:
         logger.error("Execution failed. This may lead to errors/bugs when populating certain transactions!")
 
@@ -142,7 +158,22 @@ def create_transactions(users,merchants):
         rand_int = randint(0, len(merchants)-1)
         merchant = merchants[rand_int]
         logger.info("Transaction #%d",i)
-        transactions.append(add_transaction(user,merchant))
+        #transactions.append(add_transaction(user,merchant))
+        url = "http://%s/transactions" % environ.get('URL_TRANSACTIONS')
+        Faker.seed(0)
+        payload = {
+            "type":"DEPOSIT",
+            "accountNumber":user['accountNumber'],
+            "amount":get_random_routing_num(),
+            "merchantCode":merchant['code'],
+            "merchantName":merchant['name'],
+            "description": fake.text(max_nb_chars=15),
+            "method":"ATM",
+            "hold":False
+        }
+        msg_success = "Microservice successfully added transaction to database!"
+        msg_fail = "Microservice failed to add transaction to database! Reattempting..."
+        transactions.append(req.post(url,payload,msg_success,msg_fail))
         i+=1
     return transactions
 
@@ -162,8 +193,6 @@ def add_applicant():
     # Returns {applicant}
     logger.info("Creating dummy applicant.")    
     url = "http://%s/applicants" % environ.get('URL_UNDERWRITER')
-    token = get_token(credentials)
-    headers = {'Authorization':token,"Content-Type":"application/json"}
     addr = get_random_address()
     gender = "FEMALE"
     if (randint(0,99) % 2 == 0): gender = "MALE"
@@ -187,32 +216,28 @@ def add_applicant():
         "email":fake.email()
     }
     logger.info("Dummy applicant successfully generated.")
-    logger.info("Sending data to microservice...")
-    r = requests.post(url,headers=headers,json=payload)
-    if (r.status_code >= 200 and r.status_code <= 300):
-        logger.info("Microservice successfully added applicant to database!")
-        return r.json()
-    logger.error("Microservice failed to add applicant to database! Reattempting...")
+    msg_success = "Microservice successfully added applicant to database!"
+    msg_fail = "Microservice failed to add applicant to database! Reattempting..."
+    res = req.post(url,payload,msg_success,msg_fail)
+    if (res): return res
     return add_applicant()
 
 def add_application(id):
     # Add new applicants
     # Returns {applications}
-    logger.info("Creating dummy application.")
+    rand_num = randint(1,100)
+    account_type = ACCOUNT_TYPES[rand_num % 3]
+    logger.info("Creating %s application." % account_type)
     url = "http://%s/applications" % environ.get('URL_UNDERWRITER')
     payload = {
-        "applicationType":"CHECKING",
+        "applicationType":account_type,
         "noApplicants":True,
         "applicantIds": [id]
     }
-    token = get_token(credentials)
-    headers = {'Authorization':token,"Content-Type":"application/json"}
-    for i in range(conn_attempts):
-        r = requests.post(url,headers=headers,json=payload)
-        if (r.status_code >= 200 and r.status_code <= 300):
-            logger.info("Microservice successfully added applications to database!")
-            return r.json()
-        logger.error("Microservice failed to add applications to database! Reattempting...")
+    msg_success = "Microservice successfully added application to database!"
+    msg_fail = "Microservice failed to add application to database! Reattempting..."
+    res = req.post(url,payload,msg_success,msg_fail)
+    return res
 
 def add_bank():
     # Add new bank
@@ -228,14 +253,10 @@ def add_bank():
         "zipcode":addr[3]
     }
     logger.info("Dummy bank successfully generated.")
-    logger.info("Sending data to microservice...")
-    token = get_token(credentials)
-    headers = {'Authorization':token,"Content-Type":"application/json"}
-    r = requests.post(url,headers=headers,json=payload)
-    if (r.status_code >= 200 and r.status_code <= 300):
-        logger.info("Microservice successfully added bank to database!")
-        return r.json()
-    logger.error("Microservice failed to add bank to database! Reattempting...")
+    msg_success = "Microservice successfully added bank to database!"
+    msg_fail = "Microservice failed to add bank to database! Reattempting..."
+    res = req.post(url,payload,msg_success,msg_fail)
+    if (res): return res
     return add_bank()
 
 def add_branch(bankId):
@@ -254,14 +275,10 @@ def add_branch(bankId):
         "zipcode":addr[3]
     }
     logger.info("Dummy branch successfully generated.")
-    logger.info("Sending data to microservice...")
-    token = get_token(credentials)
-    headers = {'Authorization':token,"Content-Type":"application/json"}
-    r = requests.post(url,headers=headers,json=payload)
-    if (r.status_code >= 200 and r.status_code <= 300):
-        logger.info("Microservice successfully added branch to database!")
-        return r.json()
-    logger.error("Microservice failed to add branch to database! Reattempting...")
+    msg_success = "Microservice successfully added branch to database!"
+    msg_fail = "Microservice failed to add branch to database! Reattempting..."
+    res = req.post(url,payload,msg_success,msg_fail)
+    if (res): return res
     return add_branch(bankId)
 
 def add_merchant():
@@ -288,16 +305,15 @@ def add_user(applicant):
     payload = {
         "role":"member",
         "username": username,
-        "password": 'Abc123456*',
+        "password": get_password(),
         "membershipId": applicant['membershipId'],
         "lastFourOfSSN": applicant['socialSecurity'][7:]
     }
     logger.info("Dummy user successfully generated.")
     logger.info("Sending data to microservice...")
-    token = get_token(credentials)
-    headers = {'Authorization':token,"Content-Type":"application/json"}
+    headers = {'Authorization':req.token,"Content-Type":"application/json"}
     for i in range(conn_attempts):
-        r = requests.post(url,headers=headers,json=payload)
+        r = post(url,headers=headers,json=payload)
         if (r.status_code >= 200 and r.status_code <= 300):
             logger.info("Microservice successfully added user to database!")
             data = r.json()
@@ -324,23 +340,18 @@ def add_transaction(user,merchant):
         "hold":False
     }
     logger.info("Dummy transaction successfully generated.")
-    logger.info("Sending data to microservice...")
-    token = get_token(credentials)
-    headers = {'Authorization':token,"Content-Type":"application/json"}
-    for i in range(conn_attempts):
-        r = requests.post(url,headers=headers,json=payload)
-        if (r.status_code >= 200 and r.status_code <= 300):
-            logger.info("Microservice successfully added transaction to database!")
-            return r.json()
-        logger.error("Microservice failed to add transaction to database! Reattempting...")
-    logger.error("Microservice failed. Attempts exhausted!")
-    
+    msg_success = "Microservice successfully added transaction to database!"
+    msg_fail = "Microservice failed to add transaction to database! Reattempting..."
+    res = req.post(url,payload,msg_success,msg_fail)
+    if (res): return res
+    return add_transaction
+
 def clean_applications(apps):
     logger.info("Starting application spin cycle (removing denied accounts).")
     applications_list = []
     for application in apps:
         logger.info("Checking application status...")
-        if (application != None and application['membersCreated']): 
+        if (application and application['membersCreated']): 
             logger.info("Application approved. Adding to list...")
             application['applicants'][0]['membershipId'] = int(application['createdMembers'][0]['membershipId'])
             application['applicants'][0]['accountNumber'] = application['createdAccounts'][0]['accountNumber']
@@ -362,6 +373,21 @@ def set_account_sequence():
         logger.info("Execution complete. Records commited: %s",curs.rowcount)
     except:
         logger.error("Execution failed. This will cause an error when populating accounts!")
+
+def get_password():
+    logger.info("Generating random password...")
+    Faker.seed(0)
+    password = fake.password()
+    if (password_is_valid(password)): return password
+    logger.info("Password failed to pass constrants! Reattempting...")
+    return get_password()
+
+def password_is_valid(password):
+    exp = '''^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[-~`"/\\'}|@$!;:%*<>_[\]{^=#+()?&])[A-Za-z0-9@$-~!"%*^#+()?&]{8,}$'''
+    r = re.search(exp,password)
+    if (r == None): return False
+    logger.info("Password passed contraints!")
+    return True
 
 def verify_account_sequence():
     logger.info("Retrieving last record in account_sequence...")
