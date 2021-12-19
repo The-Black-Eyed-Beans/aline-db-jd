@@ -3,7 +3,7 @@ This is a friendly python script to populate our given database "alinedb" with d
 In order to run you must pass the following environment variables
 About 100 records of each table will be created. This can be easliy adjusted in index.py @ 13.
 Each run will produce a log file. Remember to clean up (-:
-**dockerfile @ joshuad23/aline-db-injector:1.0
+**dockerfile @ joshuad23/aline-db-injector:2.0
 
 env.
 - MYSQL_HOST=<STRING>
