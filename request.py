@@ -32,6 +32,7 @@ class Request(Logger):
             self.info("Admin successfully registered.")
             self.info("username: %s password: %s",self.username,self.password)
             self.register_attempt = True
+            return
         self.error("Admin failed to be registered!")
     
     def credentials(self):
