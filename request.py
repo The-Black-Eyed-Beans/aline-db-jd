@@ -8,6 +8,7 @@ class Request(Logger):
         self.token = False
         self.request_attempts = 10
         self.std_out = True
+        self.register_attempt = False
 
     def post(self,url,payload,msg_success,msg_fail):
         self.info("Sending data to microservice...")
@@ -60,7 +61,7 @@ class Request(Logger):
             self.token = r.headers['Authorization']
             self.info("Token: %s", self.token.split(' ')[1])
         elif(r.status_code == 403 and self.register_attempt == False): 
-            self.register_admin()
+            self.create_admin()
             return self.fetch_token()
 
     def get_token(self):
