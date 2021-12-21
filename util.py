@@ -15,55 +15,8 @@ fake.add_provider(internet)
 fake.add_provider(date_time)
 fake.add_provider(misc)
 
-credentials = {
-    "username":environ.get('USER_USERNAME'),
-    "password":environ.get('USER_PASSWORD'),
-}
-
-conn_attempts = 10
+conn_attempts = 3
 ACCOUNT_TYPES = {0:'SAVINGS',1:'CHECKING',2:'CHECKING_AND_SAVINGS'}
-
-def create_admin():
-    admin = {
-        "role":environ.get('USER_ROLE'),
-        "username":environ.get('USER_USERNAME'),
-        "password":environ.get('USER_PASSWORD'),
-        "firstName":environ.get('USER_FIRSTNAME'),
-        "lastName":environ.get('USER_LASTNAME'),
-        "email":environ.get('USER_EMAIL'),
-        "phone":environ.get('USER_PHONE'),
-    }
-    add_admin(admin)
-
-def add_admin(payload):
-    # Register a new user
-    # Returns {username, password}
-    logger.info("Attempting to Register user.")
-    url = "http://%s/users/registration" % environ.get('URL_USER')
-    r = post(url,json=payload)
-    if (r.status_code >= 200 and r.status_code <= 300):
-        username = payload['username']
-        password = payload['password']
-        logger.info("User successfully registered.")
-        logger.info("username: %s password: %s",username,password)
-        return {username,password}
-    logger.error("User failed to be registered!")
-
-def get_token(payload):
-    # Returns jwt -> Bearer xyz
-    logger.info("Attempting to retieve token.")
-    url = "http://%s/login" % environ.get('URL_USER')
-    r = post(url,json=payload)
-    if (r.status_code >= 200 and r.status_code <= 300):
-        token = r.headers['Authorization']
-        logger.info("Token: %s", token.split(' ')[1])
-        return token
-    logger.error("Failed to retrieve token!")
-    for i in range(conn_attempts):
-        create_admin()
-        token = get_token(credentials)
-        if token: return token
-        return False
 
 def get_random_license():
     return "DL%d" % randint(10000, 99999)
@@ -146,7 +99,7 @@ def create_merchants(qty):
     logger.info("Attempting to create %d dummy merchants...",qty)
     merchants = []
     for i in range(qty):
-        logger.info("Merchant #%d",i)
+        logger.info("Merchant #%d",i+1)
         merchants.append(add_merchant())
     return merchants
 
@@ -365,7 +318,7 @@ def set_account_sequence():
     tbl = "account_sequence"
     conn = get_conn()
     curs = conn.cursor()
-    sql = "INSERT INTO %s.%s VALUES (%d)" % (environ.get('MYSQL_DATABASE'),tbl,1)
+    sql = "INSERT INTO %s.%s VALUES (%d)" % (environ.get('MYSQL_DATABASE'),tbl,101)
 
     try:
         curs.execute(sql)
