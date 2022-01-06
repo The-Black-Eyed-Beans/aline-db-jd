@@ -7,15 +7,20 @@ class Request(Logger):
     def __init__(self):
         self.token = False
         self.request_attempts = 10
-        self.std_out = True
+        self.std_out = False
         self.register_attempt = False
 
     def post(self,url,payload,msg_success,msg_fail):
         self.info("Sending data to microservice...")
         headers = {'Authorization':self.get_token(),"Content-Type":"application/json"}
         for i in range(self.request_attempts):
-            r = post(url,headers=headers,json=payload)
-            if (r.status_code >= 200 and r.status_code <= 300):
+            r = False
+            try:
+                r = post(url,headers=headers,json=payload)
+            except requests.exceptions.RequestException as e:
+                self.error(e)
+                return False
+            if (r and r.status_code >= 200 and r.status_code <= 300):
                 self.info(msg_success)
                 return r.json()
             self.error(msg_fail)
@@ -25,14 +30,19 @@ class Request(Logger):
         # Register admin
         self.info("Attempting to Register admin.")
         url = "http://%s/users/registration" % environ.get('URL_USER')
-        r = post(url,json=payload)
-        if (r.status_code >= 200 and r.status_code <= 300):
+        r = False
+        try:
+            r = post(url,json=payload)
+        except requests.exceptions.RequestException as e:
+            self.error(e)
+            return False
+        if (r and r.status_code >= 200 and r.status_code <= 300):
             self.username = payload['username']
             self.password = payload['password']
             self.info("Admin successfully registered.")
             self.info("username: %s password: %s",self.username,self.password)
             self.register_attempt = True
-            return
+            return False
         self.error("Admin failed to be registered!")
     
     def credentials(self):
@@ -57,7 +67,12 @@ class Request(Logger):
         # Returns jwt -> Bearer xyz
         self.info("Attempting to retieve token.")
         url = "http://%s/login" % environ.get('URL_USER')
-        r = post(url,json=self.credentials())
+        r = False
+        try:
+            r = post(url,json=self.credentials())
+        except requests.exceptions.RequestException as e:
+            self.error(e)
+            return False
         if (r.status_code >= 200 and r.status_code <= 300):
             self.token = r.headers['Authorization']
             self.info("Token: %s", self.token.split(' ')[1])
